@@ -93,7 +93,6 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Embedding, LSTM, Bidirectional, Dense
 
 input_ids = Input(shape=(484,), dtype=tf.int32, name="input_ids")
-attention_mask = Input(shape=(484,), dtype=tf.int32, name="attention_mask")
 
 x = Embedding(input_dim=len(tokenizer.word_index) + 1, output_dim=32)(input_ids)
 x = Bidirectional(LSTM(32, activation='tanh'))(x)
@@ -102,7 +101,7 @@ x = Dense(256, activation='relu')(x)
 x = Dense(128, activation='relu')(x)
 output = Dense(1, activation='sigmoid')(x)
 
-model = Model(inputs=[input_ids, attention_mask], outputs=output, name="text-classifier")
+model = Model(inputs=input_ids, outputs=output, name="text-classifier")
 model.compile(loss="binary_crossentropy", optimizer='adam', metrics=["accuracy"])
 model.summary()
 ```
@@ -111,7 +110,7 @@ model.summary()
 
 ```python
 def map_dataset_to_input_and_labels(dataset):
-    return dataset.map(lambda x, y: ({'input_ids': x, 'attention_mask': x}, y))
+    return dataset.map(lambda x, y: ({'input_ids': x}, y))
 
 train = map_dataset_to_input_and_labels(train)
 val = map_dataset_to_input_and_labels(val)
@@ -137,43 +136,52 @@ print("Test Loss, Test Accuracy:", results)
 sample_text = "This is a test sentence."
 tokenized_sample = tokenizer.texts_to_sequences([sample_text])
 padded_sample = pad_sequences(tokenized_sample, maxlen=484)
-prediction = model.predict({"input_ids": padded_sample, "attention_mask": padded_sample})
+prediction = model.predict({"input_ids": padded_sample})
 print("Predicted Toxicity Score:", prediction)
 ```
 
-## 6. Concept Map
+## 6. Model Results Explanation
+
+### Model Summary
 
 ```
-Dataset → Data Processing → Model Definition → Model Training → Running in Jupyter Notebook
+Model: "text-classifier"
+__________________________________________________________________________________________________
+ Layer (type)                Output Shape                 Param #   Connected to                  
+==================================================================================================
+ input_ids (InputLayer)      [(None, 484)]                0         []                            
+                                                                                                  
+ embedding_1 (Embedding)     (None, 484, 32)              927872    ['input_ids[0][0]']           
+                                                                                                  
+ bidirectional_1 (Bidirecti  (None, 64)                   16640     ['embedding_1[0][0]']         
+ onal)                                                                                           
+                                                                                                  
+ dense_4 (Dense)             (None, 128)                  8320      ['bidirectional_1[0][0]']     
+                                                                                                  
+ dense_5 (Dense)             (None, 256)                  33024     ['dense_4[0][0]']             
+                                                                                                  
+ dense_6 (Dense)             (None, 128)                  32896     ['dense_5[0][0]']             
+                                                                                                  
+ dense_7 (Dense)             (None, 1)                    129       ['dense_6[0][0]']             
+                                                                                                  
+==================================================================================================
+Total params: 1018881 (3.89 MB)
+Trainable params: 1018881 (3.89 MB)
+Non-trainable params: 0 (0.00 Byte)
+__________________________________________________________________________________________________
 ```
 
-## 7. Main Classes and Methods
+### Training Performance
 
-### Classes:
-- `tensorflow.keras.models.Model`: Defines the model architecture.
-- `tensorflow.data.Dataset`: Handles data loading and transformation.
-
-### Methods:
-- `tf.data.Dataset.from_tensor_slices(data)`: Converts data to TensorFlow dataset.
-- `Dataset.cache()`: Caches dataset to optimize performance.
-- `Dataset.shuffle(buffer_size)`: Shuffles dataset.
-- `Dataset.batch(batch_size)`: Batches dataset.
-- `Model.compile(loss, optimizer, metrics)`: Compiles the model.
-- `Model.fit(train_data, epochs, batch_size, validation_data)`: Trains the model.
-- `Model.evaluate(test_data)`: Evaluates the model on test data.
-- `Model.predict(input_data)`: Generates predictions for new data.
-
-## 8. Function Syntax
-
-```python
-def map_dataset_to_input_and_labels(dataset):
-    return dataset.map(lambda x, y: ({
-        'input_ids': x,
-        'attention_mask': x
-    }, y))
+```
+2482/2482 [==============================] - 1290s 518ms/step - loss: 0.2020 - accuracy: 0.9197 - val_loss: 0.1238 - val_accuracy: 0.9560
 ```
 
-## 9. Conclusion
+- The final model achieved a **training accuracy of 91.97%** and a **validation accuracy of 95.60%**.
+- The loss function indicates how well the model is performing, with lower values being better.
+- The model successfully learns patterns from input sequences and generalizes well to unseen data.
+
+## 7. Conclusion
 
 This S.O.P guides users through setting up and running a binary classification ML model in Jupyter Notebook. Once successfully replicated, additional automation and pipeline integration will be considered.
 
